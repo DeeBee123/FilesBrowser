@@ -1,3 +1,31 @@
+<?php
+
+session_start();
+
+// logout logic
+if (isset($_GET['action']) and $_GET['action'] == 'logout') {
+    // session_start();
+    unset($_SESSION['username']);
+    unset($_SESSION['password']);
+    unset($_SESSION['logged_in']);
+    print('Logged out!');
+}
+
+// login logic
+$msg = '';
+if (isset($_POST['login']) && !empty($_POST['username']) && !empty($_POST['password'])) {
+    if ($_POST['username'] == 'User' && $_POST['password'] == '1234') {
+        $_SESSION['logged_in'] = true;
+        $_SESSION['timeout'] = time();
+        $_SESSION['username'] = $_POST['username'];
+        $msg = 'You have entered valid username and password';
+    } else {
+        $msg = 'Wrong username or password';
+    }
+}
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,7 +57,47 @@
     </script>
 </head>
 <body class="mdc-typography">
-    <header class="mdc-top-app-bar--outlined">
+
+   
+    <?php
+    if ($_SESSION['logged_in'] == false) {
+        print(' <h2>Enter Username and Password</h2>' );
+        
+    }
+    ?>
+<div>
+    <?php
+    if ($_SESSION['logged_in'] == true) {
+        print('<h1>Hello, '.$_SESSION['username']  .'</h1>' );
+    
+    }
+    ?>
+</div>
+<div>
+<form action="./index.php" method="post" <?php $_SESSION['logged_in'] == true ? print("style = \"display: none\"") : print("style = \"display: block\"") ?>>
+        <h4><?php echo $msg; ?></h4>
+      
+        <label class="mdc-text-field mdc-text-field--filled">
+            <span class="mdc-text-field__ripple">username = User</span>
+            <input class="mdc-text-field__input" type="text" aria-labelledby="my-label-id" name="username" required autofocus>
+            <span class="mdc-line-ripple"></span>
+        </label>
+        <label class="mdc-text-field mdc-text-field--filled">
+            <span class="mdc-text-field__ripple">password = 1234</span>
+            <input class="mdc-text-field__input" type="password" aria-labelledby="my-label-id" name="password" required>
+            <span class="mdc-line-ripple"></span>
+        </label>
+        <button class="mdc-button" type="submit" name="login">Login</button>
+    </form>
+    <?php
+    if ($_SESSION['logged_in'] == true) {
+        print('Click here to <a href="index.php?action=logout"> logout.</a>' );
+    
+    }
+    ?>
+    
+</div>
+    <header class="mdc-top-app-bar--outlined" style=<?php $_SESSION['logged_in'] == false ? print("\"display: none\"") : print("Z\"display: block\"") ?>>
         <div class="mdc-top-app-bar__row">
             <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start">
                 <button class="mdc-fab mdc-fab--extended" onclick="<?php echo ("history.go(-1)") ?>">
@@ -38,11 +106,37 @@
                     </span>
                 </button>
                 <span class="mdc-top-app-bar__title"> Current directory: 
-                <?php echo ($_SERVER['REQUEST_URI']);?> </span>
+                <?php echo ($_SERVER['REQUEST_URI']);?> 
+                
+                </span>
             </section>
         </div>
     </header>
-    <main class="mdc-top-app-bar--fixed-adjust">
+    <?php print(($_GET["delete"])); ?>
+    <?php 
+    if(isset($_POST['download'])){
+        // print('Path to download: ' . './' . $_GET["path"] . $_POST['download']);
+        $file='./'  . $_POST['download'];
+        // a&nbsp;b.txt --> a b.txt
+        $fileToDownloadEscaped = str_replace("&nbsp;", " ", htmlentities($file, null, 'utf-8'));
+
+        ob_clean();
+        ob_start();
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/pdf'); // mime type → ši forma turėtų veikti daugumai failų, su šiuo mime type. Jei neveiktų reiktų daryti sudėtingesnę logiką
+        header('Content-Disposition: attachment; filename=' . basename($fileToDownloadEscaped));
+        header('Content-Transfer-Encoding: binary');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+        header('Pragma: public');
+        header('Content-Length: ' . filesize($fileToDownloadEscaped)); // kiek baitų browseriui laukti, jei 0 - failas neveiks nors bus sukurtas
+        ob_end_flush();
+
+        readfile($fileToDownloadEscaped);
+        exit;
+    }
+    ?> 
+    <main class="mdc-top-app-bar--fixed-adjust" <?php $_SESSION['logged_in'] == false ? print("style = \"display: none\"") : print("style = \"display: block\"") ?>>
         <div class="mdc-data-table">
             <div class="mdc-data-table__table-container mdc-layout-grid">
                 <table class="mdc-data-table__table" aria-label="Files browser">
@@ -54,16 +148,18 @@
                         </tr>
                     </thead>
 
-                    <tbody class="mdc-data-table__content">
+                    <tbody class="mdc-data-table__content" >
                         <?php
+                    
                             $root = getcwd();
                             $cur_final = $root  . $_GET["path"];
                             $scanned_directory = array_diff(scandir($cur_final), array('..', '.'));
                             $path = empty($_GET["path"]) ? $_SERVER['REQUEST_URI'] . "?path=/" : $_SERVER['REQUEST_URI'] . "/";
                         
-                            if($_GET["delete"]){
-                             unlink(".".$_GET["path"].htmlentities($_GET["delete"]));
-                             header("Location: ".dirname($_GET["delete"]));
+                            if (isset($_POST["delete"])){
+                             echo($_GET["delete"]);
+                             unlink('./'  . $_POST['delete']);
+                            //  header("Location: ". "/");
                             }
                             
                             foreach ($scanned_directory as $dir) {
@@ -71,17 +167,21 @@
                                 $deleteBtn = $dir === "index.php" || $dir === "README.md" ? " <button class=\"mdc-button\"  disabled>
                                 <div class=\"mdc-button__ripple\"></div>
                                 <span class=\"mdc-button__label\">Delete</span>
-                                </button>" :($type === "File" ? " <a href=?delete=".$path.$dir . " class=\"mdc-button\"  >
-                                    <div class=\"mdc-button__ripple\"></div>
-                                    <span class=\"mdc-button__label\">Delete</span>
-                                    </a>"  : "");
+                                </button>" :($type === "File" ? " <form action=".$path.$dir. " class=\"mdc-button\"  method=\"post\">
+                                
+                                <button class=\"mdc-button\" type=\"submit\" name=\"delete\" value=\"" . $dir . "\">Delete</>
+                                </form>"  : "");
+                                    $downloadBtn = ($type === "File" ? " <form action=".$path.$dir. " class=\"mdc-button\"  method=\"post\">
+                                
+                                    <button class=\"mdc-button\" type=\"submit\" name=\"download\" value=\"" . $dir . "\">Download</>
+                                    </form>"  : "");
                                 $link = $type === "Directory" ? "<a href=\"{$path}{$dir}\" >" . $dir . "</a>" : $dir;
                                 echo ("
                                 <tr class=\"mdc-data-table__row\">
                                     <th class=\"mdc-data-table__cell\" scope=\"row\">" . $type . "</th>
                                     <td class=\"mdc-data-table__cell mdc-data-table__cell--numeric\">" . $link . "</td>
                                     <td class=\"mdc-data-table__cell\">"
-                                        . $deleteBtn .
+                                        . $deleteBtn . $downloadBtn .
                                         "
                                     </td>
                                 </tr>");
@@ -91,7 +191,12 @@
                 </table>
             </div>
                 <?php 
-                isset($_POST["folder"]) ?(file_exists(".".$_GET["path"]."/" .htmlentities($_POST["folder"]))? null :mkdir( ".".$_GET["path"]."/" .htmlentities($_POST["folder"]))) : null ?>  
+                function createFolder(){
+                    mkdir( ".".$_GET["path"]."/" .htmlentities($_POST["folder"]));
+                  
+                    
+                }
+                isset($_POST["folder"]) ?(file_exists(".".$_GET["path"]."/" .htmlentities($_POST["folder"]))? null :createFolder()) : null ?>  
                 <form  method="POST" style="margin: 50px 0;">
                     <label class="mdc-text-field mdc-text-field--filled">
                         <span class="mdc-text-field__ripple"></span>
@@ -103,11 +208,38 @@
                         <span class="mdc-button__label">Create Folder</span>
                     </button>
                 </form>
-                <button class="mdc-fab mdc-fab--extended" onclick=<?php echo "history.go(-1)"; ?>>
-                    <div class="mdc-fab__ripple"></div>
-                    <span class="material-icons mdc-fab__icon">add</span>
-                    <span class="mdc-fab__label">Upload file</span>
-                </button>
+                <?php 
+                if(isset($_FILES['upload'])){
+                    $errors= array();
+                    $file_name = $_FILES['upload']['name'];
+                    $file_size = $_FILES['upload']['size'];
+                    $file_tmp = $_FILES['upload']['tmp_name'];
+                    $file_type = $_FILES['upload']['type'];
+                    // check extension (and only permit jpegs, jpgs and pngs)
+                    $file_ext = strtolower(end(explode('.',$_FILES['upload']['name'])));
+                    $extensions = array("jpeg","jpg","png");
+                    if(in_array($file_ext,$extensions)=== false){
+                        $errors[]="extension not allowed, please choose a JPEG or PNG file.";
+                    }
+                    if($file_size > 2097152) {
+                        $errors[]='File size must be smaller than 2 MB';
+                    }
+                    if(empty($errors)==true) {
+                        move_uploaded_file($file_tmp,".".$_GET["path"]."/" .$file_name);
+                    
+                    }else{
+                        print_r($errors);
+                    }
+                }
+
+                ?>
+                <form action="" method="post" enctype="multipart/form-data">
+                <input type="file" name="upload" >
+                <button class="mdc-button" type="submit">Upload </>
+                </input>
+               
+                </form>
         </div> 
     </main>
 </body>
+

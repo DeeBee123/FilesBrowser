@@ -4,11 +4,11 @@ INTRODUCTION
 This is a file management system to work with directories and files. 
 Functionalities:
 * see files and directories,
-* delete directories (unavailable),
+* delete files (unavailable),
 * create new directories,
-* upload files (unavailable),
-* download files (unavailable),
-* login/logout (unavailable).
+* upload files,
+* download files,
+* login/logout.
 
 LAUNCH
 
