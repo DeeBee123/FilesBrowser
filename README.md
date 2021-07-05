@@ -4,7 +4,7 @@ INTRODUCTION
 This is a file management system to work with directories and files. 
 Functionalities:
 * see files and directories,
-* delete files (unavailable),
+* delete files,
 * create new directories,
 * upload files,
 * download files,
